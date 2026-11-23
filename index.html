@@ -134,12 +134,18 @@ button.card{font:inherit;color:var(--text);text-align:left;cursor:pointer;width:
 .tp li::before{content:"•";margin-right:10px;font-weight:800}
 .rk{list-style:none;counter-reset:r;margin:28px 0 0;padding:0;display:grid;gap:10px}
 .rk li{counter-increment:r;display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--surface);border:2px solid var(--ink);border-radius:14px}
-.rk li::before{content:counter(r);width:28px;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:1.2rem}
+.rk li::before{content:attr(data-r);width:28px;font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:1.2rem}
 .rk li.e::before{content:none}
 .rk .ra{width:42px;height:42px;flex:none;display:grid;place-items:center;font-size:1.3rem;border:2px solid var(--ink);border-radius:50%}
 .rk .rn{flex:1;min-width:0}
 .rk .rn b,.rk .rn small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .rk .rn small{color:var(--muted)}
+.rkbar{display:flex;flex-wrap:wrap;align-items:center;gap:14px;margin-top:24px}
+.rkbar input{flex:1;min-width:220px;font:inherit;color:var(--text);background:var(--surface);border:2px solid var(--ink);border-radius:999px;padding:10px 18px}
+.rkbar+.rk{margin-top:16px}
+.rk li{cursor:pointer}
+.rk li.me{background:var(--yellow);color:#14213d}
+.rk li.me small{color:#14213d}
 @media (max-width:480px){#un{display:none}.chipu{padding:3px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
 </style>
@@ -191,7 +197,9 @@ button.card{font:inherit;color:var(--text);text-align:left;cursor:pointer;width:
 </ul>
 </section>
 
-<section class="sec wrap" id="rank"><h2>Papan peringkat</h2><p class="sub">10 pelajar dengan XP tertinggi. Main kuis harian untuk naik peringkat.</p><ol class="rk" id="rk"></ol></section>
+<section class="sec wrap" id="rank"><h2>Papan peringkat</h2><p class="sub">Cari temanmu atau lihat siapa yang XP-nya paling tinggi. Main kuis harian untuk naik peringkat.</p>
+<div class="rkbar"><input id="rq" type="search" placeholder="Cari nama pelajar" aria-label="Cari nama pelajar"><p class="mu" id="rme"></p></div>
+<ol class="rk" id="rk"></ol><button class="btn sm y" id="rmore" hidden style="margin-top:16px">Tampilkan lebih banyak</button></section>
 
 <section class="sec wrap" id="cara">
 <h2>Mulai belajar dalam tiga langkah</h2>
@@ -223,6 +231,8 @@ button.card{font:inherit;color:var(--text);text-align:left;cursor:pointer;width:
 <p class="fine">EduKita, website edukasi untuk belajar jadi lebih mudah dan menyenangkan.</p>
 </div>
 </footer>
+
+<dialog id="us" aria-labelledby="usn"><button class="x" id="usx" aria-label="Tutup">×</button><div id="usb" style="margin-top:6px"></div></dialog>
 
 <dialog id="sj" aria-labelledby="sjt"><button class="x" id="sjx" aria-label="Tutup">×</button>
 <div class="pcard" style="margin-top:6px"><div class="bigav" id="sjico"></div><div><h2 id="sjt" style="font-size:1.5rem"></h2><p class="mu" id="sjs"></p></div></div>
@@ -393,8 +403,8 @@ const U=LS.get("ek-users",{});if(!U[email])throw new Error("Email belum terdafta
 logout(){if(SB){const t=LS.get("ek-tok",null);if(t)api("/auth/v1/logout",{method:"POST"},t).catch(()=>{});LS.set("ek-tok",null)}else LS.set("ek-sess",null);this.user=null},
 async loadRow(){const u=this.user,t=LS.get("ek-tok",null);try{const a=await api(`/rest/v1/profiles?id=eq.${u.id}&select=*`,{},t);if(a[0]){const r=a[0];u.name=r.name||u.name;u.best=r.best||0;u.n=r.n||0;u.p={xp:r.xp||0,av:r.avatar,col:r.color,bio:r.bio,ti:r.title}}else await this.saveRow()}catch(e){}},
 async saveRow(){const u=this.user,p=u.p||{};await api("/rest/v1/profiles",{method:"POST",h:{Prefer:"resolution=merge-duplicates,return=minimal"},body:JSON.stringify({id:u.id,name:u.name,bio:p.bio||null,avatar:p.av||null,color:p.col||null,title:p.ti||null,xp:p.xp||0,best:u.best,n:u.n,updated_at:new Date().toISOString()})},LS.get("ek-tok",null))},
-async board(){if(SB)return api("/rest/v1/profiles?select=name,avatar,color,title,xp&order=xp.desc&limit=10",{});
-const P=LS.get("ek-prof",{});return Object.entries(LS.get("ek-users",{})).map(([e,u])=>{const p=P[e]||{};return{name:u.name,avatar:p.av,color:p.col,title:p.ti,xp:p.xp||0}}).filter(r=>r.xp>0).sort((a,b)=>b.xp-a.xp).slice(0,10)},
+async board(){if(SB)return api("/rest/v1/profiles?select=id,name,bio,avatar,color,title,xp&order=xp.desc&limit=500",{});
+const P=LS.get("ek-prof",{});return Object.entries(LS.get("ek-users",{})).map(([e,u])=>{const p=P[e]||{};return{id:e,name:u.name,bio:p.bio,avatar:p.av,color:p.col,title:p.ti,xp:p.xp||0}}).sort((a,b)=>b.xp-a.xp)},
 async score(sc){const u=this.user;if(!u)return;u.n++;u.best=Math.max(u.best,sc);u.p=u.p||{};const L0=lv(u.p.xp).L,g=gain(sc);u.p.xp=(u.p.xp||0)+g;const L1=lv(u.p.xp).L;u.p.last={g,up:L1>L0,L:L1};
 try{if(SB)await api("/auth/v1/user",{method:"PUT",body:JSON.stringify({data:{name:u.name,best:u.best,n:u.n,prof:u.p}})},LS.get("ek-tok",null));else{const U=LS.get("ek-users",{});if(U[u.email]){U[u.email].best=u.best;U[u.email].n=u.n;LS.set("ek-users",U)}}}catch(e){}if(SB)await Auth.saveRow();else persistP(u);renderRank()}};
 
@@ -480,16 +490,40 @@ const p=document.createElement("p");p.style.cssText="margin:0 0 14px;font-weight
 }
 $("sv").onclick=saveEdit;
 $("cx").onclick=()=>{say("");setMode("profil")};
+let RK=[],rkN=10;
 async function renderRank(){
-let a=[];try{a=await Auth.board()}catch(e){}
+try{RK=await Auth.board()}catch(e){RK=[]}
+RK.forEach(r=>r.rank=1+RK.filter(o=>o.xp>r.xp).length);
+const u=Auth.user,id=u&&(SB?u.id:u.email),me=RK.find(r=>r.id===id);
+$("rme").textContent=me?`Peringkatmu: #${me.rank} dari ${RK.length} pelajar`:(u?"":"Masuk untuk melihat peringkatmu.");
+drawRank();
+}
+function drawRank(){
+const q=$("rq").value.trim().toLowerCase(),u=Auth.user,id=u&&(SB?u.id:u.email);
+const all=q?RK.filter(r=>(r.name||"").toLowerCase().includes(q)):RK,a=all.slice(0,rkN);
+$("rmore").hidden=all.length<=rkN;
 $("rk").replaceChildren(...(a.length?a:[0]).map(r=>{
 const li=document.createElement("li");
-if(!r){li.className="e";li.textContent="Belum ada peringkat. Daftar, main kuis, dan jadilah yang pertama!";return li}
+if(!r){li.className="e";li.textContent=q?"Tidak ada pelajar dengan nama itu.":"Belum ada peringkat. Daftar, main kuis, dan jadilah yang pertama!";return li}
 const l=lv(r.xp).L,av=document.createElement("span"),nm=document.createElement("div"),b=document.createElement("b"),s=document.createElement("small"),x=document.createElement("b");
 av.className="ra";av.textContent=AV.includes(r.avatar)?r.avatar:AV[0];av.style.background=CL.includes(r.color)?r.color:CL[0];
 nm.className="rn";b.textContent=r.name;s.textContent=r.title||TL.filter(t=>t[0]<=l).pop()[1];nm.append(b,s);
-x.textContent=`Lv ${l}, ${r.xp} XP`;li.append(av,nm,x);return li}));
+x.textContent=`Lv ${l}, ${r.xp} XP`;li.append(av,nm,x);
+li.dataset.r=r.rank;li.tabIndex=0;if(r.id===id)li.classList.add("me");
+li.onclick=()=>openUser(r);li.onkeydown=e=>{if(e.key==="Enter")openUser(r)};
+return li}));
 }
+function openUser(r){
+const l=lv(r.xp),b=$("usb"),t=r.title||TL.filter(x=>x[0]<=l.L).pop()[1];
+b.innerHTML=`<div class="pcard"><div class="bigav"></div><div><b class="pn" id="usn"></b><div class="pt"></div></div></div><p class="pbio"></p><div class="lvl"><span class="badge">Level ${l.L} dari 100</span><span class="mu">Peringkat #${r.rank}</span></div><div class="pb"><b style="width:${l.need?l.cur/l.need*100:100}%"></b></div><p class="mu">Total ${r.xp} XP</p>`;
+const a=b.querySelector(".bigav");a.textContent=AV.includes(r.avatar)?r.avatar:AV[0];a.style.background=CL.includes(r.color)?r.color:CL[0];
+b.querySelector(".pn").textContent=r.name;b.querySelector(".pt").textContent=t;b.querySelector(".pbio").textContent=r.bio||"Belum ada bio.";
+$("us").showModal();
+}
+$("usx").onclick=()=>$("us").close();
+$("us").onclick=e=>{if(e.target===$("us"))$("us").close()};
+$("rq").oninput=()=>{rkN=10;drawRank()};
+$("rmore").onclick=()=>{rkN+=10;drawRank()};
 Auth.init().then(()=>{ui();renderRank()});
 
 const TP={
